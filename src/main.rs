@@ -1,7 +1,7 @@
 mod scanner;
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
-use scanner::Scanner;
+use scanner::scanner::Scanner;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 2 {
@@ -29,4 +29,11 @@ fn run_file(path: &String) {
 fn run(file_content: String) {
     let scanner = Scanner::new(&file_content);
     scanner.scan_tokens();
+}
+
+fn error(line: i32, message: String) {
+    report(line, String::from(""), message);
+}
+fn report(line: i32, loc: String, message: String) {
+    println!("Error: line {}:{}, {}", line, loc, message);
 }
