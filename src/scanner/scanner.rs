@@ -1,10 +1,8 @@
-use core::panic;
-
 use super::token::{Token, TokenType};
 
 pub struct Scanner<'code> {
     code: &'code String,
-    tokens: Vec<&'code Token<'code>>,
+    tokens: Vec<Token<'code>>,
     start: usize,
     current: usize,
     line: usize,
@@ -24,7 +22,7 @@ impl<'code> Scanner<'code> {
         }
     }
 
-    pub fn scan_tokens(self) {
+    pub fn scan_tokens(&mut self) {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()
@@ -32,11 +30,11 @@ impl<'code> Scanner<'code> {
         println!("{}", self.code);
     }
 
-    pub fn is_at_end(self) -> bool {
+    pub fn is_at_end(&mut self) -> bool {
         return self.current > self.code.len().try_into().unwrap();
     }
 
-    pub fn scan_token(self) {
+    pub fn scan_token(&mut self) {
         let c = self.advance();
         match c {
             ')' => self.add_token(TokenType::RightParen),
@@ -53,24 +51,19 @@ impl<'code> Scanner<'code> {
         }
     }
 
-    fn advance(self) -> char {
+    fn advance(&mut self) -> char {
         let c = self.code.chars().nth(self.current).unwrap();
         self.current += 1;
         return c;
     }
 
-    fn add_token(self, token_type: TokenType) {
+    fn add_token(&mut self, token_type: TokenType) {
         self.add_token_with_literal(token_type, Option::None)
     }
 
-    fn add_token_with_literal(self, token_type: TokenType, literal: Option<String>) {
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<String>) {
         let lexeme = &self.code[self.start..self.current];
-        let token = Token {
-            lexeme,
-            line: self.line,
-            literal,
-            token_type,
-        };
-        self.tokens.append(token);
+        let token = Token::new(token_type, lexeme, literal, self.line);
+        self.tokens.push(token);
     }
 }
