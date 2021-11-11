@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use crate::scanner::token;
+
 use super::token::{Token, TokenType};
 
 pub struct Scanner<'code> {
@@ -35,20 +39,11 @@ impl<'code> Scanner<'code> {
     }
 
     pub fn scan_token(&mut self) {
-        let c = self.advance();
-        match c {
-            ')' => self.add_token(TokenType::RightParen),
-            '(' => self.add_token(TokenType::LeftParen),
-            '{' => self.add_token(TokenType::LeftBrace),
-            '}' => self.add_token(TokenType::RightBrace),
-            ',' => self.add_token(TokenType::COMMA),
-            '.' => self.add_token(TokenType::DOT),
-            '-' => self.add_token(TokenType::MINUS),
-            '+' => self.add_token(TokenType::PLUS),
-            ';' => self.add_token(TokenType::SEMICOLON),
-            '*' => self.add_token(TokenType::STAR),
-            _ => println!("Error could not parse token {}, line {}", c, self.line),
-        }
+        let c = self.advance().to_string();
+        match TokenType::from_str(c.as_str()) {
+            Ok(token_type) => self.add_token(token_type),
+            Err(_) => println!("Error could not parse token {}, line {}", c, self.line),
+        };
     }
 
     fn advance(&mut self) -> char {
