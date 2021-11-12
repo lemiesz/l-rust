@@ -88,7 +88,7 @@ pub enum TokenType {
     #[strum(serialize = "while")]
     WHILE,
 
-    #[strum(serialize = "EOF")]
+    #[strum(serialize = "\0")]
     EOF,
 }
 
@@ -120,7 +120,7 @@ impl<'code> Token<'code> {
         }
     }
 
-    pub fn toString(self) -> String {
+    pub fn to_string(self) -> String {
         let token_as_string = self.token_type.to_string();
         return token_as_string + " " + self.lexeme + " " + self.literal.unwrap().as_str();
     }
