@@ -1,11 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::format,
-    str::FromStr,
-    thread::current,
-};
-
-use crate::scanner::token;
+use std::{collections::HashMap, str::FromStr};
 
 use super::token::{Token, TokenType};
 
@@ -112,8 +105,14 @@ impl<'code> Scanner<'code> {
     }
 
     fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<String>) {
-        let lexeme = self.code.get(self.start..self.current).unwrap();
-        let token = Token::new(token_type, lexeme, literal, self.line);
-        self.tokens.push(token);
+        match self.code.get(self.start..self.current) {
+            Some(lexeme) => {
+                let token = Token::new(token_type, lexeme, literal, self.line);
+                self.tokens.push(token);
+            }
+            None => self
+                .tokens
+                .push(Token::new(TokenType::EOF, "\0", literal, self.line)),
+        }
     }
 }
