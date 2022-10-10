@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display, Formatter};
 
 use strum_macros::EnumString;
 
-#[derive(EnumString, Debug)]
+#[derive(EnumString, Debug, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     #[strum(serialize = "(")]
@@ -27,6 +27,8 @@ pub enum TokenType {
     SLASH,
     #[strum(serialize = "*")]
     STAR,
+    #[strum(serialize = "\"")]
+    QUOTESTRING,
 
     // One or two character tokens.
     #[strum(serialize = "!")]
@@ -53,6 +55,16 @@ pub enum TokenType {
     STRING,
     #[strum(serialize = "Number")]
     NUMBER,
+
+    // whitespace
+    #[strum(serialize = " ")]
+    SPACE,
+    #[strum(serialize = "\r")]
+    SLASHRETURN,
+    #[strum(serialize = "\t")]
+    TAB,
+    #[strum(serialize = "\n")]
+    NEWLINE,
 
     // Keywords.
     #[strum(serialize = "and")]
@@ -98,6 +110,7 @@ impl Display for TokenType {
     }
 }
 
+#[derive(Debug)]
 pub struct Token<'code> {
     token_type: TokenType,
     lexeme: &'code str,

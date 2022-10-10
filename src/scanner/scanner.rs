@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use super::token::{Token, TokenType};
+use super::token::{self, Token, TokenType};
 
 pub struct Scanner<'code> {
     code: &'code String,
@@ -9,6 +9,7 @@ pub struct Scanner<'code> {
     current: usize,
     line: usize,
     two_char_tokens: HashMap<char, char>,
+    had_error: bool,
 }
 
 /**
@@ -23,6 +24,7 @@ impl<'code> Scanner<'code> {
             current: 0,
             line: 0,
             two_char_tokens: HashMap::from([('!', '='), ('=', '='), ('<', '='), ('>', '=')]),
+            had_error: false,
         }
     }
 
@@ -49,6 +51,7 @@ impl<'code> Scanner<'code> {
             Ok(token_type) => {
                 let t = self.two_char_tokens.get(&c);
                 let token_to_add: TokenType;
+
                 match t {
                     Some(item) => {
                         let second_char = item.clone();
@@ -61,11 +64,101 @@ impl<'code> Scanner<'code> {
                         );
                         self.add_token(token_to_add)
                     }
-                    None => self.add_token(token_type),
+                    None => match token_type {
+                        TokenType::SPACE | TokenType::SLASHRETURN | TokenType::TAB => {}
+                        TokenType::NEWLINE => {
+                            self.line = self.line + 1;
+                            return;
+                        }
+                        TokenType::SLASH => {
+                            while self.peek().unwrap() != '\n' && !self.is_at_end() {
+                                self.advance();
+                            }
+                        }
+                        TokenType::QUOTESTRING => {
+                            self.string();
+                        }
+                        _ => {
+                            if self.is_digit(c) {
+                                self.number()
+                            }
+                            self.add_token(token_type)
+                        }
+                    },
                 }
             }
-            Err(_) => println!("Error could not parse token {}, line {}", c, self.line),
+            Err(_) => {
+                self.had_error = true;
+                println!("Error could not parse token {}, line {}", c, self.line)
+            }
         };
+    }
+
+    fn number(&mut self) {
+        while self.is_digit(self.peek().unwrap()) {
+            self.advance();
+        }
+
+        if self.peek().unwrap() == '.' && self.is_digit(self.peek_next()) {
+            self.advance();
+
+            while self.is_digit(self.peek().unwrap()) {
+                self.advance();
+            }
+        }
+
+        let result = self.code.get(self.start..self.current);
+        match result {
+            Some(literal) => {
+                self.add_token_with_literal(TokenType::NUMBER, Some(literal.to_string()));
+            }
+            None => {
+                println!("Could not parse literal");
+            }
+        }
+    }
+
+    fn string(&mut self) {
+        while self.peek().unwrap() != '"' && !self.is_at_end() {
+            if self.peek().unwrap() == '\n' {
+                self.line = self.line + 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            println!("Error found unterminated string on line {}", self.line);
+        }
+        self.advance();
+
+        let result = self.code.get(self.start + 1..self.current - 1);
+        match result {
+            Some(literal) => {
+                self.add_token_with_literal(TokenType::STRING, Some(literal.to_string()));
+            }
+            None => {
+                println!("Could not parse literal");
+            }
+        }
+    }
+
+    fn is_digit(&mut self, c: char) -> bool {
+        return c >= '0' && c <= '9';
+    }
+
+    // peeks to see what the next character is
+    fn peek(&mut self) -> Option<char> {
+        if self.is_at_end() {
+            return Some('\0');
+        }
+        return self.char_at(self.current);
+    }
+
+    fn peek_next(&mut self) -> char {
+        if self.current + 1 >= self.code.len() {
+            return '\0';
+        }
+        return self.char_at(self.current + 1).unwrap();
     }
 
     // Checks to see if the current token is a special character
@@ -98,6 +191,10 @@ impl<'code> Scanner<'code> {
                 return '\0';
             }
         }
+    }
+
+    fn char_at(&mut self, n: usize) -> Option<char> {
+        return self.code.chars().nth(n);
     }
 
     fn add_token(&mut self, token_type: TokenType) {
