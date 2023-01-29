@@ -3,6 +3,7 @@ mod scanner;
 #[macro_use]
 extern crate lazy_static;
 
+use std::io::Write;
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
 use scanner::scanner::Scanner;
@@ -14,7 +15,22 @@ fn main() {
     } else if args.len() == 2 {
         run_file(&args[1]);
     } else {
-        // runPrompt();
+        run_prompt();
+    }
+}
+
+fn run_prompt() -> () {
+    println!("Welcome to rlox! (Type exit to quit)");
+
+    loop {
+        let mut input = String::new();
+        print!("> ");
+        std::io::stdout().flush().unwrap();
+        std::io::stdin().read_line(&mut input).unwrap();
+        run(input.clone());
+        if input == "exit" {
+            break;
+        }
     }
 }
 
@@ -33,5 +49,6 @@ fn run_file(path: &String) {
 fn run(file_content: String) {
     let mut scanner = Scanner::new(&file_content);
     scanner.scan_tokens();
+    scanner.debug_print();
     println!("Done")
 }

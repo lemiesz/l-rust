@@ -28,6 +28,13 @@ impl<'code> Scanner<'code> {
         }
     }
 
+    pub fn debug_print(self) {
+        println!("Tokens:");
+        for token in &self.tokens {
+            println!("{:?}", token);
+        }
+    }
+
     pub fn scan_tokens(&mut self) {
         while !self.is_at_end() {
             self.start = self.current;
