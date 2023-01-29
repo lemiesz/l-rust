@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display, Formatter};
 
 use strum_macros::EnumString;
 
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(EnumString, Debug, PartialEq, Clone, Copy)]
 pub enum TokenType {
     // Single-character tokens.
     #[strum(serialize = "(")]

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use super::token::{self, Token, TokenType};
+use super::token::{Token, TokenType};
 
 pub struct Scanner<'code> {
     code: &'code String,
@@ -43,6 +43,9 @@ impl<'code> Scanner<'code> {
     pub fn scan_token(&mut self) {
         let c = self.advance();
 
+        if c.is_alphabetic() {
+            return self.identifier();
+        }
         // Because of the nasty matcher that needs to be refactored.
         // We treat the case of a literal digit seperatly. Since it cant be pattern matched
         // as no tokens exist for it.
@@ -226,4 +229,37 @@ impl<'code> Scanner<'code> {
                 .push(Token::new(TokenType::EOF, "\0", literal, self.line)),
         }
     }
+
+    fn identifier(&mut self) {
+        while self.peek().is_alphanumeric() {
+            self.advance();
+        }
+        let text = self.code.get(self.start..self.current).unwrap();
+        let token_type = KEYWORDS.get(text).unwrap_or(&TokenType::IDENTIFIER);
+        self.add_token(*token_type);
+    }
+}
+
+// declare a hashmap of identifiers to token type
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, TokenType> = {
+        let mut m = HashMap::new();
+        m.insert("and", TokenType::AND);
+        m.insert("class", TokenType::CLASS);
+        m.insert("else", TokenType::ELSE);
+        m.insert("false", TokenType::FALSE);
+        m.insert("for", TokenType::FOR);
+        m.insert("fun", TokenType::FUN);
+        m.insert("if", TokenType::IF);
+        m.insert("nil", TokenType::NIL);
+        m.insert("or", TokenType::OR);
+        m.insert("print", TokenType::PRINT);
+        m.insert("return", TokenType::RETURN);
+        m.insert("super", TokenType::SUPER);
+        m.insert("this", TokenType::THIS);
+        m.insert("true", TokenType::TRUE);
+        m.insert("var", TokenType::VAR);
+        m.insert("while", TokenType::WHILE);
+        m
+    };
 }

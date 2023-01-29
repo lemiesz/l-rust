@@ -1,4 +1,8 @@
 mod scanner;
+
+#[macro_use]
+extern crate lazy_static;
+
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
 use scanner::scanner::Scanner;
@@ -30,11 +34,4 @@ fn run(file_content: String) {
     let mut scanner = Scanner::new(&file_content);
     scanner.scan_tokens();
     println!("Done")
-}
-
-fn error(line: i32, message: String) {
-    report(line, String::from(""), message);
-}
-fn report(line: i32, loc: String, message: String) {
-    println!("Error: line {}:{}, {}", line, loc, message);
 }
