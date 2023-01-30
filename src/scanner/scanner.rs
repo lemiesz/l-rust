@@ -8,7 +8,6 @@ pub struct Scanner<'code> {
     start: usize,
     current: usize,
     line: usize,
-    two_char_tokens: HashMap<char, char>,
     had_error: bool,
 }
 
@@ -23,7 +22,6 @@ impl<'code> Scanner<'code> {
             start: 0,
             current: 0,
             line: 0,
-            two_char_tokens: HashMap::from([('!', '='), ('=', '='), ('<', '='), ('>', '=')]),
             had_error: false,
         }
     }
@@ -65,7 +63,7 @@ impl<'code> Scanner<'code> {
         // If it is then I add the two char token, otherwise I build a two char token and add that
         match TokenType::from_str(c.to_string().as_str()) {
             Ok(token_type) => {
-                let t = self.two_char_tokens.get(&c);
+                let t = TWO_CHAR_TOKENS.get(&c);
                 let token_to_add: TokenType;
 
                 match t {
@@ -82,6 +80,13 @@ impl<'code> Scanner<'code> {
                     }
                     None => match token_type {
                         TokenType::SPACE | TokenType::SLASHRETURN | TokenType::TAB => {}
+                        TokenType::SEMICOLON => {
+                            if self.peek_next() == '\n' {
+                                self.advance();
+                            } else {
+                                self.line = self.line + 1;
+                            }
+                        }
                         TokenType::NEWLINE => {
                             self.line = self.line + 1;
                             return;
@@ -269,4 +274,9 @@ lazy_static! {
         m.insert("while", TokenType::WHILE);
         m
     };
+}
+
+lazy_static! {
+    static ref TWO_CHAR_TOKENS: HashMap<char, char> =
+        HashMap::from([('!', '='), ('=', '='), ('<', '='), ('>', '=')]);
 }

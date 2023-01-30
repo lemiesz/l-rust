@@ -22,7 +22,7 @@ pub enum TokenType {
     #[strum(serialize = "+")]
     PLUS,
     #[strum(serialize = ":")]
-    SEMICOLON,
+    COLON,
     #[strum(serialize = "/")]
     SLASH,
     #[strum(serialize = "*")]
@@ -65,6 +65,8 @@ pub enum TokenType {
     TAB,
     #[strum(serialize = "\n")]
     NEWLINE,
+    #[strum(serialize = ";")]
+    SEMICOLON,
 
     // Keywords.
     #[strum(serialize = "and")]

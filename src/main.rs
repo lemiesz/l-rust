@@ -27,10 +27,21 @@ fn run_prompt() -> () {
         print!("> ");
         std::io::stdout().flush().unwrap();
         std::io::stdin().read_line(&mut input).unwrap();
-        run(input.clone());
-        if input == "exit" {
+
+        while input.ends_with(";\n") {
+            // append the next line to the input
+            let mut next_line = String::new();
+            print!("> ");
+            std::io::stdout().flush().unwrap();
+            std::io::stdin().read_line(&mut next_line).unwrap();
+            input.push_str(&next_line);
+        }
+
+        if input == "exit\n" {
             break;
         }
+
+        run(input.clone());
     }
 }
 
