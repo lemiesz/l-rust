@@ -1,6 +1,5 @@
+use common::token::{Token, TokenType};
 use std::{collections::HashMap, str::FromStr};
-
-use super::token::{Token, TokenType};
 
 pub struct Scanner<'code> {
     code: &'code String,
