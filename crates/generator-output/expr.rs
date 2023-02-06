@@ -1,9 +1,9 @@
 use super::token::Token;
-pub struct Expr {
-    pub binary: Expr left, Token operator, Expr right,
-    pub grouping: Expr expression,
-    pub literal: Object value,
-    pub unary: Token operator, Expr right,
+
+pub struct Binary {
+    pub left: Expr,
+    pub operator: Token,
+    pub right: Expr,
 }
-impl Expr {
-}
+
+impl Binary on Expr {}

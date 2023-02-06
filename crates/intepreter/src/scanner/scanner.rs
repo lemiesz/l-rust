@@ -1,9 +1,9 @@
 use common::token::{Token, TokenType};
 use std::{collections::HashMap, str::FromStr};
 
-pub struct Scanner<'code> {
-    code: &'code String,
-    tokens: Vec<Token<'code>>,
+pub struct Scanner {
+    code: String,
+    tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
@@ -13,8 +13,8 @@ pub struct Scanner<'code> {
 /**
  * Basic scanner implementation
  **/
-impl<'code> Scanner<'code> {
-    pub fn new(code: &'code String) -> Self {
+impl Scanner {
+    pub fn new(code: String) -> Self {
         Scanner {
             code,
             tokens: Vec::new(),
@@ -232,12 +232,15 @@ impl<'code> Scanner<'code> {
     fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<String>) {
         match self.code.get(self.start..self.current) {
             Some(lexeme) => {
-                let token = Token::new(token_type, lexeme, literal, self.line);
+                let token = Token::new(token_type, String::from(lexeme), literal, self.line);
                 self.tokens.push(token);
             }
-            None => self
-                .tokens
-                .push(Token::new(TokenType::EOF, "\0", literal, self.line)),
+            None => self.tokens.push(Token::new(
+                TokenType::EOF,
+                String::from("\0"),
+                literal,
+                self.line,
+            )),
         }
     }
 

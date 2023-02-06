@@ -58,7 +58,7 @@ fn run_file(path: &String) {
 }
 
 fn run(file_content: String) {
-    let mut scanner = Scanner::new(&file_content);
+    let mut scanner = Scanner::new(file_content);
     scanner.scan_tokens();
     scanner.debug_print();
     println!("Done")
