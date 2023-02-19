@@ -114,9 +114,9 @@ impl Display for TokenType {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    token_type: TokenType,
+    pub token_type: TokenType,
     lexeme: String,
-    literal: Option<String>,
+    pub literal: Option<String>,
     line: usize,
 }
 
@@ -132,6 +132,10 @@ impl Token {
 
     pub fn to_string(self) -> String {
         let token_as_string = self.token_type.to_string();
-        return token_as_string + " " + &self.lexeme + " " + self.literal.unwrap().as_str();
+        return token_as_string;
+    }
+
+    pub fn to_lexme(self) -> String {
+        return self.lexeme;
     }
 }
