@@ -28,8 +28,10 @@ macro_rules! bx {
 
 #[derive(Clone, Debug, Error)]
 pub enum Error {
+    #[error("parse error: {}", .0)]
+    ParseErrorCustom(String),
     #[error("parse error")]
-    ParseError,
+    ParseErrorGeneric,
 }
 
 type ParseResult = Result<Expr, Error>;
@@ -81,7 +83,23 @@ impl Parser {
             return Ok(self.advance());
         }
 
-        Err(Error::ParseError)
+        return Err(self.error(self.peek(), message.to_string()));
+    }
+
+    fn error(self, token: Token, message: String) -> Error {
+        let mut msg = "";
+        if self.peek().token_type == TokenType::EOF {
+            msg = format!("{} at end", message.as_str()).as_str();
+        } else {
+            msg = format!(
+                "line: {} at {}, {}",
+                token.line.to_string(),
+                token.to_lexme(),
+                message.as_str(),
+            )
+            .as_str();
+        }
+        return Error::ParseErrorCustom(message.to_string());
     }
 
     fn is_at_end(&self) -> bool {
