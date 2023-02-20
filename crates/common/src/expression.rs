@@ -146,11 +146,11 @@ impl Hash for Expr {
     }
 }
 
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
+// impl fmt::Display for Expr {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{}", self.to_string())
+//     }
+// }
 
 #[derive(Clone, Debug)]
 pub enum Stmt {

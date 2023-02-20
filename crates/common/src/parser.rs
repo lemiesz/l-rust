@@ -86,20 +86,18 @@ impl Parser {
         return Err(self.error(self.peek(), message.to_string()));
     }
 
-    fn error(self, token: Token, message: String) -> Error {
-        let mut msg = "";
-        if self.peek().token_type == TokenType::EOF {
-            msg = format!("{} at end", message.as_str()).as_str();
+    fn error(&mut self, token: Token, message: String) -> Error {
+        let msg = if token.token_type == TokenType::EOF {
+            format!("{} at end", message.as_str())
         } else {
-            msg = format!(
+            format!(
                 "line: {} at {}, {}",
                 token.line.to_string(),
                 token.to_lexme(),
                 message.as_str(),
             )
-            .as_str();
-        }
-        return Error::ParseErrorCustom(message.to_string());
+        };
+        return Error::ParseErrorCustom(msg.to_string());
     }
 
     fn is_at_end(&self) -> bool {
@@ -215,7 +213,9 @@ impl Parser {
                 self.consume(TokenType::RightParen, "Expect ')' after expression.");
                 return expr;
             }
-            _ => Err(Error::ParseError),
+            _ => Err(Error::ParseErrorCustom(
+                "Did not find a matching primary token".to_string(),
+            )),
         }
     }
 }
