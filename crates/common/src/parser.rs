@@ -18,6 +18,8 @@ use crate::{
     expression::{Expr, ExprKind},
     token::{self, Token, TokenType},
 };
+use std::cell::RefCell;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 
 macro_rules! bx {
@@ -30,6 +32,8 @@ macro_rules! bx {
 pub enum Error {
     #[error("parse error: {}", .0)]
     ParseErrorCustom(String),
+    #[error("Error on line: {} token: {} parse error: {message}", .token.line, token.token_type.to_string())]
+    ParseErrorToken { token: Token, message: String },
     #[error("parse error")]
     ParseErrorGeneric,
 }
@@ -39,18 +43,50 @@ type ParseResult = Result<Expr, Error>;
 #[derive(Debug)]
 pub struct Parser {
     pub tokens: Vec<Token>,
-    pub position: usize,
+    pub position: RefCell<usize>,
 }
 
 impl Parser {
     pub fn new(tokens: &[Token]) -> Self {
         Parser {
             tokens: tokens.to_owned(),
-            position: 0,
+            position: RefCell::new(0),
         }
     }
 
-    fn match_token(&mut self, token_types: Vec<TokenType>) -> Option<Token> {
+    pub fn parse(&self) -> ParseResult {
+        return self.expression();
+    }
+
+    fn synchronize(&self) {
+        self.advance();
+
+        while !self.is_at_end() {
+            // if the previous token was a semicolon, we are at the end of a statment
+            if self.previous().token_type == TokenType::SEMICOLON {
+                return;
+            }
+
+            match self.peek().token_type {
+                // if the next token is one of these, we are at the start of a new statement
+                TokenType::CLASS
+                | TokenType::FUN
+                | TokenType::VAR
+                | TokenType::FOR
+                | TokenType::IF
+                | TokenType::WHILE
+                | TokenType::PRINT
+                | TokenType::RETURN => {
+                    return;
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+    }
+
+    fn match_token(&self, token_types: Vec<TokenType>) -> Option<Token> {
         for token_type in token_types {
             if self.check(token_type) {
                 return Some(self.advance());
@@ -60,25 +96,35 @@ impl Parser {
     }
 
     fn check(&self, token_type: TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
         return self.peek().token_type == token_type;
     }
 
-    fn advance(&mut self) -> Token {
+    fn increment_position(&self) {
+        *self.position.borrow_mut() += 1;
+    }
+
+    fn advance(&self) -> Token {
         if !self.is_at_end() {
-            self.position += 1;
+            self.increment_position();
         }
         return self.previous();
     }
 
     fn previous(&self) -> Token {
-        return self.tokens[self.position - 1].clone();
+        let prev_position = *self.position.borrow() - 1;
+        // let prev_position = self.position.load(Ordering::Relaxed) - 1;
+        return self.tokens[prev_position].clone();
     }
 
     fn peek(&self) -> Token {
-        return self.tokens[self.position].clone();
+        let next_position = *self.position.borrow() + 1;
+        return self.tokens[next_position].clone();
     }
 
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, Error> {
+    fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, Error> {
         if self.check(token_type) {
             return Ok(self.advance());
         }
@@ -86,7 +132,7 @@ impl Parser {
         return Err(self.error(self.peek(), message.to_string()));
     }
 
-    fn error(&mut self, token: Token, message: String) -> Error {
+    fn error(&self, token: Token, message: String) -> Error {
         let msg = if token.token_type == TokenType::EOF {
             format!("{} at end", message.as_str())
         } else {
@@ -105,12 +151,12 @@ impl Parser {
     }
 
     // express -> equality
-    fn expression(&mut self) -> ParseResult {
+    fn expression(&self) -> ParseResult {
         return self.equality();
     }
 
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
-    fn equality(&mut self) -> ParseResult {
+    fn equality(&self) -> ParseResult {
         let mut expr = self.comparison()?;
         while self
             .match_token(vec![TokenType::BangEqual, TokenType::EqualEqual])
@@ -128,7 +174,7 @@ impl Parser {
     }
 
     // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    fn comparison(&mut self) -> ParseResult {
+    fn comparison(&self) -> ParseResult {
         let mut expr = self.term()?;
         while self
             .match_token(vec![
@@ -151,7 +197,7 @@ impl Parser {
     }
 
     // term -> factor ( ( "-" | "+" ) factor )* ;
-    fn term(&mut self) -> ParseResult {
+    fn term(&self) -> ParseResult {
         let mut expr = self.factor()?;
         while self
             .match_token(vec![TokenType::MINUS, TokenType::PLUS])
@@ -169,7 +215,7 @@ impl Parser {
     }
 
     // factor -> unray ((* | /) unray)*
-    fn factor(&mut self) -> ParseResult {
+    fn factor(&self) -> ParseResult {
         let mut expr = self.unary()?;
         while self
             .match_token(vec![TokenType::STAR, TokenType::SLASH])
@@ -187,7 +233,7 @@ impl Parser {
     }
 
     // unary -> ( "!" | "-" ) unary | primary
-    fn unary(&mut self) -> ParseResult {
+    fn unary(&self) -> ParseResult {
         if self
             .match_token(vec![TokenType::BANG, TokenType::MINUS])
             .is_some()
@@ -200,7 +246,7 @@ impl Parser {
     }
 
     // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
-    fn primary(&mut self) -> ParseResult {
+    fn primary(&self) -> ParseResult {
         let token = self.advance();
         match token.token_type {
             TokenType::FALSE
@@ -209,13 +255,49 @@ impl Parser {
             | TokenType::NUMBER
             | TokenType::STRING => Ok(Expr::new(ExprKind::Literal(token.literal.clone()))),
             TokenType::LeftParen => {
-                let expr = self.expression();
+                let expr = self.expression()?;
                 self.consume(TokenType::RightParen, "Expect ')' after expression.");
-                return expr;
+                return Ok(Expr::new(ExprKind::Grouping(Box::new(expr))));
             }
-            _ => Err(Error::ParseErrorCustom(
-                "Did not find a matching primary token".to_string(),
-            )),
+            _ => Err(Error::ParseErrorToken {
+                message: "Did not find a matching primary token".to_string(),
+                token: self.peek(),
+            }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        expression::{Expr, ExprKind},
+        parser::Parser,
+        scanner,
+        token::Token,
+        token::TokenType,
+    };
+
+    /**
+     * Test that takes the expression let i = 0; and parses it into an AST
+     */
+    #[test]
+    fn parses_the_result_of_variable_assignment() {
+        let mut scanner = scanner::Scanner::new("2 + 2".to_string());
+
+        scanner.scan_tokens();
+
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+
+        let expr_kind = ExprKind::Variable(Token::new(
+            TokenType::IDENTIFIER,
+            "i".to_string(),
+            Some("1".to_string()),
+            4,
+        ));
+        let expr_expect = Expr::new(expr_kind);
+
+        assert_eq!(expr.to_string(), expr_expect.to_string());
+        // assert_eq!("false", "true");
     }
 }

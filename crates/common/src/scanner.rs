@@ -1,9 +1,10 @@
-use common::token::{Token, TokenType};
 use std::{collections::HashMap, str::FromStr};
+
+use crate::token::{Token, TokenType};
 
 pub struct Scanner {
     code: String,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
@@ -25,7 +26,7 @@ impl Scanner {
         }
     }
 
-    pub fn debug_print(self) {
+    pub fn debug_print(&self) {
         println!("Tokens:");
         for token in &self.tokens {
             println!("{:?}", token);
@@ -37,14 +38,15 @@ impl Scanner {
             self.start = self.current;
             self.scan_token();
         }
+        self.add_token(TokenType::EOF);
         println!("{}", self.code);
     }
 
-    pub fn is_at_end(&mut self) -> bool {
+    fn is_at_end(&mut self) -> bool {
         return self.current > self.code.len() - 1;
     }
 
-    pub fn scan_token(&mut self) {
+    fn scan_token(&mut self) {
         let c = self.advance();
 
         if c.is_alphabetic() {
@@ -85,6 +87,7 @@ impl Scanner {
                             } else {
                                 self.line = self.line + 1;
                             }
+                            self.add_token(token_type);
                         }
                         TokenType::NEWLINE => {
                             self.line = self.line + 1;

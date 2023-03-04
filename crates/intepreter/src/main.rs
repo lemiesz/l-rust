@@ -1,12 +1,8 @@
-mod scanner;
-
-#[macro_use]
-extern crate lazy_static;
-
 use std::io::Write;
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
-use scanner::scanner::Scanner;
+use common::parser::{self, Parser};
+use common::scanner::Scanner;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 2 {
@@ -61,5 +57,16 @@ fn run(file_content: String) {
     let mut scanner = Scanner::new(file_content);
     scanner.scan_tokens();
     scanner.debug_print();
+    let parser = Parser::new(&scanner.tokens);
+    match parser.parse() {
+        Ok(expr) => {
+            println!("Parsed successfully");
+            println!("{:?}", expr);
+        }
+        Err(e) => {
+            println!("Error parsing: {}", e);
+        }
+    }
+
     println!("Done")
 }

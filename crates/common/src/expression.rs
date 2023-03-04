@@ -135,7 +135,7 @@ impl Expr {
             } => todo!(),
             ExprKind::Super { keyword, method } => todo!(),
             ExprKind::This(_) => todo!(),
-            ExprKind::Variable(_) => todo!(),
+            ExprKind::Variable(token) => return token.to_lexme(),
         }
     }
 }
