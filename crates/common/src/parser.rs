@@ -368,4 +368,19 @@ mod tests {
             "(== (+ (* (group (+ (1) (2))) (3)) (/ (4) (5))) (1))"
         );
     }
+
+    /**
+     * Handles an even more complex expression with parantheses, order of operation, and multiple quality checks
+     */
+    #[test]
+    fn parses_complex_parantheses_2() {
+        let mut scanner = scanner::Scanner::new("((1 + 2) * 3 + 4 / 5 == 1) == 1".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(
+            expr.to_string(),
+            "(== (group (== (+ (* (group (+ (1) (2))) (3)) (/ (4) (5))) (1))) (1))"
+        );
+    }
 }
