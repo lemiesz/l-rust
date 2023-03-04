@@ -120,8 +120,7 @@ impl Parser {
     }
 
     fn peek(&self) -> Token {
-        let next_position = *self.position.borrow() + 1;
-        return self.tokens[next_position].clone();
+        return self.tokens[*self.position.borrow()].clone();
     }
 
     fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, Error> {
@@ -288,16 +287,85 @@ mod tests {
 
         let parser = Parser::new(&scanner.tokens);
         let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(+ (2) (2))");
+    }
 
-        let expr_kind = ExprKind::Variable(Token::new(
-            TokenType::IDENTIFIER,
-            "i".to_string(),
-            Some("1".to_string()),
-            4,
-        ));
-        let expr_expect = Expr::new(expr_kind);
+    /**
+     * Parsing just true/false returns "true" or "false
+     */
+    #[test]
+    fn parses_true_false() {
+        let mut scanner = scanner::Scanner::new("true".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(true)");
 
-        assert_eq!(expr.to_string(), expr_expect.to_string());
-        // assert_eq!("false", "true");
+        let mut scanner = scanner::Scanner::new("false".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(false)");
+    }
+
+    /**
+     * Order of operations is maintained for multiplcation and division
+     */
+    #[test]
+    fn parses_order_of_operations() {
+        let mut scanner = scanner::Scanner::new("2 + 2 * 2".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(+ (2) (* (2) (2)))");
+
+        // and division
+        let mut scanner = scanner::Scanner::new("2 + 2 / 2".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(+ (2) (/ (2) (2)))");
+    }
+
+    /**
+     * can handle expressions such as 1 + 2 * 3 + 4 / 5
+     */
+    #[test]
+    fn parses_complex_expressions() {
+        let mut scanner = scanner::Scanner::new("1 + 2 * 3 + 4 / 5".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(expr.to_string(), "(+ (+ (1) (* (2) (3))) (/ (4) (5)))");
+    }
+
+    /**
+     * Handles expressions that have paranthese and maintain that order of operations
+     */
+    #[test]
+    fn parses_parantheses() {
+        let mut scanner = scanner::Scanner::new("(1 + 2) * 3 + 4 / 5".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(
+            expr.to_string(),
+            "(+ (* (group (+ (1) (2))) (3)) (/ (4) (5)))"
+        );
+    }
+
+    /**
+     * Handles a complex expression with parantheses, order of operation, and equality check
+     */
+    #[test]
+    fn parses_complex_parantheses() {
+        let mut scanner = scanner::Scanner::new("(1 + 2) * 3 + 4 / 5 == 1".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let expr = parser.expression().unwrap();
+        assert_eq!(
+            expr.to_string(),
+            "(== (+ (* (group (+ (1) (2))) (3)) (/ (4) (5))) (1))"
+        );
     }
 }

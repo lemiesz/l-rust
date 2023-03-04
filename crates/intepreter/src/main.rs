@@ -61,6 +61,7 @@ fn run(file_content: String) {
     match parser.parse() {
         Ok(expr) => {
             println!("Parsed successfully");
+            println!("{:?}", &expr.to_string());
             println!("{:?}", expr);
         }
         Err(e) => {

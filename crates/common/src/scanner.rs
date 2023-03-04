@@ -235,7 +235,12 @@ impl Scanner {
     fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<String>) {
         match self.code.get(self.start..self.current) {
             Some(lexeme) => {
-                let token = Token::new(token_type, String::from(lexeme), literal, self.line);
+                let token = Token::new(
+                    token_type,
+                    String::from(lexeme),
+                    literal.or(Some(String::from(lexeme))),
+                    self.line,
+                );
                 self.tokens.push(token);
             }
             None => self.tokens.push(Token::new(

@@ -86,8 +86,8 @@ impl Expr {
         Self { id, kind }
     }
 
-    pub fn to_string(self) -> String {
-        match self.kind {
+    pub fn to_string(&self) -> String {
+        match self.kind.clone() {
             ExprKind::Binary {
                 left,
                 operator,
