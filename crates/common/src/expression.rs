@@ -5,7 +5,10 @@ use std::{
 
 use uuid::Uuid;
 
-use crate::token::{Token, TokenType};
+use crate::{
+    token::{Token, TokenType},
+    value::Value,
+};
 
 // copying from here https://github.com/mchlrhw/loxide/blob/main/treewalk/src/ast.rs
 // also found an interesting implementation using macros here https://github.com/abesto/jlox-rs/blob/main/src/ast.rs
@@ -31,7 +34,7 @@ pub enum ExprKind {
         name: Token,
     },
     Grouping(Box<Expr>),
-    Literal(Option<String>),
+    Literal(Option<Value>),
     Logical {
         left: Box<Expr>,
         operator: Token,
@@ -100,7 +103,7 @@ impl Expr {
                 }
                 let mut result = String::new();
                 result.push('(');
-                result.push_str(literal.unwrap().as_str());
+                result.push_str(literal.unwrap().to_string().as_str());
                 result.push(')');
                 result
             }
@@ -188,9 +191,11 @@ pub enum Stmt {
 
 #[cfg(test)]
 mod tests {
+    use crate::value::Value;
+
     #[test]
     fn prints_basic_ast() {
-        let expr = super::Expr::new(super::ExprKind::Literal(Some("1".to_string())));
+        let expr = super::Expr::new(super::ExprKind::Literal(Some(Value::Number(1.))));
         assert_eq!(expr.to_string(), "(1)");
     }
 
@@ -199,11 +204,11 @@ mod tests {
     fn prints_ast_with_binary_expression() {
         let expr = super::Expr::new(super::ExprKind::Binary {
             left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                "1".to_string(),
+                Value::Number(1.0),
             )))),
             operator: super::Token::new(super::TokenType::PLUS, "+".to_owned(), Option::None, 1),
             right: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                "2".to_string(),
+                Value::Number(2.0),
             )))),
         });
         assert_eq!(expr.to_string(), "(+ (1) (2))");
@@ -231,12 +236,12 @@ mod tests {
                     1,
                 ),
                 right: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                    "123".to_string(),
+                    Value::Number(123.),
                 )))),
             })),
             operator: super::Token::new(super::TokenType::STAR, "*".to_owned(), Option::None, 1),
             right: Box::new(super::Expr::new(super::ExprKind::Grouping(Box::new(
-                super::Expr::new(super::ExprKind::Literal(Some("45.67".to_string()))),
+                super::Expr::new(super::ExprKind::Literal(Some(Value::Number(45.67)))),
             )))),
         });
         assert_eq!(expr.to_string(), "(* (- (123)) (group (45.67)))");
@@ -249,12 +254,12 @@ mod tests {
     fn prints_ast_with_nested_binary_expression_2() {
         let expr = super::Expr::new(super::ExprKind::Binary {
             left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                "25".to_string(),
+                Value::Number(25.),
             )))),
             operator: super::Token::new(super::TokenType::PLUS, "+".to_owned(), Option::None, 1),
             right: Box::new(super::Expr::new(super::ExprKind::Binary {
                 left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                    "10".to_string(),
+                    Value::Number(10.),
                 )))),
                 operator: super::Token::new(
                     super::TokenType::STAR,
@@ -265,7 +270,7 @@ mod tests {
                 right: Box::new(super::Expr::new(super::ExprKind::Grouping(Box::new(
                     super::Expr::new(super::ExprKind::Binary {
                         left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                            "2".to_string(),
+                            Value::Number(2.),
                         )))),
                         operator: super::Token::new(
                             super::TokenType::SLASH,
@@ -274,7 +279,7 @@ mod tests {
                             1,
                         ),
                         right: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                            "4".to_string(),
+                            Value::Number(4.),
                         )))),
                     }),
                 )))),
@@ -297,7 +302,7 @@ mod tests {
                 1,
             ),
             value: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                "1".to_string(),
+                Value::Number(1.),
             )))),
         });
         assert_eq!(expr.to_string(), "(= a (1))");
@@ -317,7 +322,7 @@ mod tests {
             ),
             value: Box::new(super::Expr::new(super::ExprKind::Binary {
                 left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                    "25".to_string(),
+                    Value::Number(25.),
                 )))),
                 operator: super::Token::new(
                     super::TokenType::PLUS,
@@ -327,7 +332,7 @@ mod tests {
                 ),
                 right: Box::new(super::Expr::new(super::ExprKind::Binary {
                     left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                        "10".to_string(),
+                        Value::Number(10.),
                     )))),
                     operator: super::Token::new(
                         super::TokenType::STAR,
@@ -338,7 +343,7 @@ mod tests {
                     right: Box::new(super::Expr::new(super::ExprKind::Grouping(Box::new(
                         super::Expr::new(super::ExprKind::Binary {
                             left: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                                "2".to_string(),
+                                Value::Number(2.),
                             )))),
                             operator: super::Token::new(
                                 super::TokenType::SLASH,
@@ -347,7 +352,7 @@ mod tests {
                                 1,
                             ),
                             right: Box::new(super::Expr::new(super::ExprKind::Literal(Some(
-                                "4".to_string(),
+                                Value::Number(4.),
                             )))),
                         }),
                     )))),

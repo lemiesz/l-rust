@@ -17,6 +17,7 @@
 use crate::{
     expression::{Expr, ExprKind},
     token::{self, Token, TokenType},
+    value::Value,
 };
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -252,7 +253,7 @@ impl Parser {
             | TokenType::TRUE
             | TokenType::NIL
             | TokenType::NUMBER
-            | TokenType::STRING => Ok(Expr::new(ExprKind::Literal(token.literal.clone()))),
+            | TokenType::STRING => Ok(Expr::new(ExprKind::Literal(Some(Value::from_token(token))))),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 self.consume(TokenType::RightParen, "Expect ')' after expression.");
