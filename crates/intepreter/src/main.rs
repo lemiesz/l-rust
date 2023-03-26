@@ -62,11 +62,9 @@ fn run(file_content: String) {
     let interpreter = Interpreter::new();
 
     match parser.parse() {
-        Ok(expr) => {
+        Ok(stmts) => {
             println!("Parsed successfully");
-            println!("{:?}", &expr.to_string());
-            println!("{:?}", expr);
-            interpreter.interpret(expr);
+            interpreter.interpret(stmts);
         }
         Err(e) => {
             println!("Error parsing: {}", e);

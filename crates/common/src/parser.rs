@@ -15,7 +15,7 @@
    heavily inspired by https://github.com/mchlrhw/loxide/blob/main/treewalk/src/parser.rs
 */
 use crate::{
-    expression::{Expr, ExprKind},
+    expression::{Expr, ExprKind, Stmt},
     token::{self, Token, TokenType},
     value::Value,
 };
@@ -39,12 +39,15 @@ pub enum Error {
     ParseErrorGeneric,
 }
 
-type ParseResult = Result<Expr, Error>;
+type ParseResult = Result<Vec<Stmt>, Error>;
+type ExprResult = Result<Expr, Error>;
+type StmtResult = Result<Stmt, Error>;
 
 #[derive(Debug)]
 pub struct Parser {
     pub tokens: Vec<Token>,
     pub position: RefCell<usize>,
+    pub errors: Vec<Error>,
 }
 
 impl Parser {
@@ -52,11 +55,23 @@ impl Parser {
         Parser {
             tokens: tokens.to_owned(),
             position: RefCell::new(0),
+            errors: vec![],
         }
     }
 
     pub fn parse(&self) -> ParseResult {
-        return self.expression();
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            if let Ok(stmt) = self.statement() {
+                statements.push(stmt);
+            }
+        }
+
+        if self.errors.is_empty() {
+            Ok(statements)
+        } else {
+            Err(self.errors[0].clone())
+        }
     }
 
     fn synchronize(&self) {
@@ -150,13 +165,32 @@ impl Parser {
         return self.peek().token_type == TokenType::EOF;
     }
 
+    fn statement(&self) -> StmtResult {
+        if self.match_token(vec![TokenType::PRINT]).is_some() {
+            return self.print_statement();
+        }
+        return self.expression_statement();
+    }
+
+    fn print_statement(&self) -> StmtResult {
+        let value = self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expect ';' after value.")?;
+        return Ok(Stmt::Print(value));
+    }
+
+    fn expression_statement(&self) -> StmtResult {
+        let expr = self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expect ';' after value.")?;
+        return Ok(Stmt::Expression(expr));
+    }
+
     // express -> equality
-    fn expression(&self) -> ParseResult {
+    fn expression(&self) -> ExprResult {
         return self.equality();
     }
 
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
-    fn equality(&self) -> ParseResult {
+    fn equality(&self) -> ExprResult {
         let mut expr = self.comparison()?;
         while self
             .match_token(vec![TokenType::BangEqual, TokenType::EqualEqual])
@@ -174,7 +208,7 @@ impl Parser {
     }
 
     // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    fn comparison(&self) -> ParseResult {
+    fn comparison(&self) -> ExprResult {
         let mut expr = self.term()?;
         while self
             .match_token(vec![
@@ -197,7 +231,7 @@ impl Parser {
     }
 
     // term -> factor ( ( "-" | "+" ) factor )* ;
-    fn term(&self) -> ParseResult {
+    fn term(&self) -> ExprResult {
         let mut expr = self.factor()?;
         while self
             .match_token(vec![TokenType::MINUS, TokenType::PLUS])
@@ -215,7 +249,7 @@ impl Parser {
     }
 
     // factor -> unray ((* | /) unray)*
-    fn factor(&self) -> ParseResult {
+    fn factor(&self) -> ExprResult {
         let mut expr = self.unary()?;
         while self
             .match_token(vec![TokenType::STAR, TokenType::SLASH])
@@ -233,7 +267,7 @@ impl Parser {
     }
 
     // unary -> ( "!" | "-" ) unary | primary
-    fn unary(&self) -> ParseResult {
+    fn unary(&self) -> ExprResult {
         if self
             .match_token(vec![TokenType::BANG, TokenType::MINUS])
             .is_some()
@@ -246,7 +280,7 @@ impl Parser {
     }
 
     // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
-    fn primary(&self) -> ParseResult {
+    fn primary(&self) -> ExprResult {
         let token = self.advance();
         match token.token_type {
             TokenType::FALSE
@@ -270,7 +304,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::{
-        expression::{Expr, ExprKind},
+        expression::{Expr, ExprKind, Stmt},
         parser::Parser,
         scanner,
         token::Token,
@@ -383,5 +417,42 @@ mod tests {
             expr.to_string(),
             "(== (group (== (+ (* (group (+ (1) (2))) (3)) (/ (4) (5))) (1))) (1))"
         );
+    }
+
+    /**
+     *  Handles parsing of a full statment ending in a semicolon
+     */
+    #[test]
+    fn parses_full_statement() {
+        let mut scanner = scanner::Scanner::new("print 1 + 1;".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let stmts = parser.parse().unwrap();
+        assert_eq!(stmts.len(), 1);
+        match stmts.get(0).unwrap() {
+            Stmt::Print(expr) => assert_eq!(expr.to_string(), "(+ (1) (1))"),
+            _ => panic!("Expected a print statement"),
+        }
+    }
+
+    /**
+     *  Handles pasing of multiple statments
+     */
+    #[test]
+    fn parses_multiple_statments() {
+        let mut scanner = scanner::Scanner::new("print 1 + 1; 1 + 2;".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let stmts = parser.parse().unwrap();
+        assert_eq!(stmts.len(), 2);
+        match stmts.get(0).unwrap() {
+            Stmt::Print(expr) => assert_eq!(expr.to_string(), "(+ (1) (1))"),
+            _ => panic!("Expected a print statement"),
+        }
+
+        match stmts.get(1).unwrap() {
+            Stmt::Expression(expr) => assert_eq!(expr.to_string(), "(+ (1) (2))"),
+            _ => panic!("Expected an expression statement"),
+        }
     }
 }

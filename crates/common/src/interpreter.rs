@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Expr, ExprKind},
+    expression::{Expr, ExprKind, Stmt},
     token::{Token, TokenType},
     value::{self, Value},
 };
@@ -23,11 +23,40 @@ impl Interpreter {
             expressions: vec![],
         }
     }
-    pub fn interpret(&self, expr: Expr) {
-        match self.evaluate(expr) {
-            Ok(value) => println!("[Debug] Result Was: {}", value),
-            Err(error) => println!("[Error]: {error}"),
+    pub fn interpret(&self, statments: Vec<Stmt>) {
+        for statment in statments {
+            if let Err(error) = self.execute(statment) {
+                println!("[Error]: {error}");
+            }
         }
+    }
+
+    pub fn execute(&self, stmt: Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::Expression(expression) => {
+                self.evaluate(expression)?;
+            }
+            Stmt::Print(expession) => {
+                let value = self.evaluate(expession)?;
+                println!("{}", value);
+            }
+            Stmt::Block(_) => todo!(),
+            Stmt::Class {
+                name,
+                superclass,
+                methods,
+            } => todo!(),
+            Stmt::Function { name, params, body } => todo!(),
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => todo!(),
+            Stmt::Return { keyword, value } => todo!(),
+            Stmt::Var { name, initializer } => todo!(),
+            Stmt::While { condition, body } => todo!(),
+        }
+        Ok(())
     }
 
     pub fn evaluate(&self, expr: Expr) -> Result<Value, Error> {
