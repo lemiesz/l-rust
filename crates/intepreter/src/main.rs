@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
+use common::interpreter::Interpreter;
 use common::parser::{self, Parser};
 use common::scanner::Scanner;
 fn main() {
@@ -58,11 +59,14 @@ fn run(file_content: String) {
     scanner.scan_tokens();
     scanner.debug_print();
     let parser = Parser::new(&scanner.tokens);
+    let interpreter = Interpreter::new();
+
     match parser.parse() {
         Ok(expr) => {
             println!("Parsed successfully");
             println!("{:?}", &expr.to_string());
             println!("{:?}", expr);
+            interpreter.interpret(expr);
         }
         Err(e) => {
             println!("Error parsing: {}", e);

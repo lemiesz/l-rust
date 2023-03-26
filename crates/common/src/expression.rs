@@ -155,6 +155,13 @@ impl Hash for Expr {
 //     }
 // }
 
+/**
+ * program -> statement* EOF;
+ * statement -> exprStmt
+ *             | printStmt;
+ * exprStmt -> expression ";";
+ * printStmt -> "print" expression ";";
+ */
 #[derive(Clone, Debug)]
 pub enum Stmt {
     Block(Vec<Stmt>),

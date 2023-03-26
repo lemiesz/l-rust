@@ -13,7 +13,7 @@ pub enum Error {
     Return { value: Value },
 }
 
-struct Interpreter {
+pub struct Interpreter {
     expressions: Vec<Expr>,
 }
 
@@ -21,6 +21,12 @@ impl Interpreter {
     pub fn new() -> Self {
         Self {
             expressions: vec![],
+        }
+    }
+    pub fn interpret(&self, expr: Expr) {
+        match self.evaluate(expr) {
+            Ok(value) => println!("[Debug] Result Was: {}", value),
+            Err(error) => println!("[Error]: {error}"),
         }
     }
 
