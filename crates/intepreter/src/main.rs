@@ -2,21 +2,22 @@ use std::io::Write;
 use std::{env, fs::File, io::Read, panic, path::Path, process::exit};
 
 use common::interpreter::Interpreter;
-use common::parser::{self, Parser};
+use common::parser::Parser;
 use common::scanner::Scanner;
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() > 2 {
-        println!("Usage: rlox [script-name]");
-        exit(64);
-    } else if args.len() == 2 {
-        run_file(&args[1]);
-    } else {
-        run_prompt();
+
+    match args.len() {
+        0 | 1 => run_prompt(),
+        2 => run_file(&args[1]),
+        _ => {
+            println!("Usage: rlox [script-name]");
+            exit(64);
+        }
     }
 }
 
-fn run_prompt() -> () {
+fn run_prompt() {
     println!("Welcome to rlox! (Type exit to quit)");
 
     loop {
@@ -49,7 +50,7 @@ fn run_file(path: &String) {
             file.read_to_string(&mut content).unwrap();
             content
         }
-        Err(_) => panic!("Error opening file {}", path),
+        Err(_) => panic!("Error opening file {path}"),
     };
     run(file_content)
 }
@@ -67,7 +68,7 @@ fn run(file_content: String) {
             interpreter.interpret(stmts);
         }
         Err(e) => {
-            println!("Error parsing: {}", e);
+            println!("Error parsing: {e}");
         }
     }
 
