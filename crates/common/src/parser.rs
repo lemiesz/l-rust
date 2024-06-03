@@ -16,12 +16,10 @@
 */
 use crate::{
     expression::{Expr, ExprKind, Stmt},
-    token::{self, Token, TokenType},
+    token::{Token, TokenType},
     value::Value,
 };
-use lazy_static::initialize;
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 
 macro_rules! bx {
@@ -141,14 +139,14 @@ impl Parser {
                 return Some(self.advance());
             }
         }
-        return None;
+        None
     }
 
     fn check(&self, token_type: TokenType) -> bool {
         if self.is_at_end() {
             return false;
         }
-        return self.peek().token_type == token_type;
+        self.peek().token_type == token_type
     }
 
     fn increment_position(&self) {
@@ -159,13 +157,13 @@ impl Parser {
         if !self.is_at_end() {
             self.increment_position();
         }
-        return self.previous();
+        self.previous()
     }
 
     fn previous(&self) -> Token {
         let prev_position = *self.position.borrow() - 1;
         // let prev_position = self.position.load(Ordering::Relaxed) - 1;
-        return self.tokens[prev_position].clone();
+        self.tokens[prev_position].clone()
     }
 
     fn peek(&self) -> Token {
@@ -177,7 +175,7 @@ impl Parser {
             return Ok(self.advance());
         }
 
-        return Err(self.error(self.peek(), message.to_string()));
+        Err(self.error(self.peek(), message.to_string()))
     }
 
     fn error(&self, token: Token, message: String) -> Error {
@@ -186,40 +184,40 @@ impl Parser {
         } else {
             format!(
                 "line: {} at {}, {}",
-                token.line.to_string(),
-                token.to_lexme(),
+                token.line,
+                token.clone().to_lexme(),
                 message.as_str(),
             )
         };
-        return Error::ParseErrorCustom(msg.to_string());
+        Error::ParseErrorCustom(msg)
     }
 
     fn is_at_end(&self) -> bool {
-        return self.peek().token_type == TokenType::EOF;
+        self.peek().token_type == TokenType::EOF
     }
 
     fn statement(&self) -> StmtResult {
         if self.match_token(vec![TokenType::PRINT]).is_some() {
             return self.print_statement();
         }
-        return self.expression_statement();
+        self.expression_statement()
     }
 
     fn print_statement(&self) -> StmtResult {
         let value = self.expression()?;
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.")?;
-        return Ok(Stmt::Print(value));
+        Ok(Stmt::Print(value))
     }
 
     fn expression_statement(&self) -> StmtResult {
         let expr = self.expression()?;
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.")?;
-        return Ok(Stmt::Expression(expr));
+        Ok(Stmt::Expression(expr))
     }
 
     // express -> equality
     fn expression(&self) -> ExprResult {
-        return self.equality();
+        self.equality()
     }
 
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
@@ -237,7 +235,7 @@ impl Parser {
                 right: bx![right],
             });
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
@@ -260,7 +258,7 @@ impl Parser {
                 right: bx![rightt],
             });
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // term -> factor ( ( "-" | "+" ) factor )* ;
@@ -278,7 +276,7 @@ impl Parser {
                 right,
             })
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // factor -> unray ((* | /) unray)*
@@ -296,7 +294,7 @@ impl Parser {
                 right,
             })
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // unary -> ( "!" | "-" ) unary | primary
@@ -309,7 +307,7 @@ impl Parser {
             let right = bx![self.unary()?];
             Expr::new(ExprKind::Unary { operator, right });
         }
-        return self.primary();
+        self.primary()
     }
 
     // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
@@ -323,8 +321,8 @@ impl Parser {
             | TokenType::STRING => Ok(Expr::new(ExprKind::Literal(Some(Value::from_token(token))))),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
-                self.consume(TokenType::RightParen, "Expect ')' after expression.");
-                return Ok(Expr::new(ExprKind::Grouping(Box::new(expr))));
+                self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
+                Ok(Expr::new(ExprKind::Grouping(Box::new(expr))))
             }
             TokenType::IDENTIFIER => Ok(Expr::new(ExprKind::Variable(self.previous()))),
             _ => Err(Error::ParseErrorToken {
