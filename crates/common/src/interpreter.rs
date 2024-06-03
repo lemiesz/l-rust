@@ -24,8 +24,8 @@ impl Interpreter {
         }
     }
     pub fn interpret(&self, statments: Vec<Stmt>) {
-        for statment in statments {
-            if let Err(error) = self.execute(statment) {
+        for statement in statments {
+            if let Err(error) = self.execute(statement) {
                 println!("[Error]: {error}");
             }
         }

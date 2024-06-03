@@ -1,16 +1,21 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "(OSX) Launch",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceRoot}/target/debug/intepreter",
-            "args": [
-                "test_tokens.txt"
-            ],
-            "cwd": "${workspaceRoot}",
-        }
-    ]
-}
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "(OSX) Launch",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceRoot}/target/debug/intepreter",
+      "args": ["test_tokens.txt"],
+      "cwd": "${workspaceRoot}"
+    },
+    {
+      "name": "TestStatments",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceRoot}/target/debug/intepreter",
+      "args": ["test_statements.txt"],
+      "cwd": "${workspaceRoot}"
+    }
+  ]
 }
