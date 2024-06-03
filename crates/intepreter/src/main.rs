@@ -59,7 +59,7 @@ fn run(file_content: String) {
     let mut scanner = Scanner::new(file_content);
     scanner.scan_tokens();
     scanner.debug_print();
-    let parser = Parser::new(&scanner.tokens);
+    let mut parser = Parser::new(&scanner.tokens);
     let interpreter = Interpreter::new();
 
     match parser.parse() {

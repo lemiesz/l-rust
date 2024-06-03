@@ -19,6 +19,7 @@ use crate::{
     token::{self, Token, TokenType},
     value::Value,
 };
+use lazy_static::initialize;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
@@ -59,11 +60,11 @@ impl Parser {
         }
     }
 
-    pub fn parse(&self) -> ParseResult {
+    pub fn parse(&mut self) -> ParseResult {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            if let Ok(stmt) = self.statement() {
-                statements.push(stmt);
+            if let Some(stmt) = self.declaration() {
+                statements.push(stmt)
             }
         }
 
@@ -72,6 +73,38 @@ impl Parser {
         } else {
             Err(self.errors[0].clone())
         }
+    }
+
+    fn declaration(&mut self) -> Option<Stmt> {
+        let res: StmtResult = if self.match_token(vec![TokenType::VAR]).is_some() {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+
+        match res {
+            Ok(stmt) => Some(stmt),
+            Err(err) => {
+                self.errors.push(err);
+                self.synchronize();
+                None
+            }
+        }
+    }
+
+    fn var_declaration(&self) -> StmtResult {
+        let name = self.consume(TokenType::IDENTIFIER, "Expect variable name.")?;
+
+        let mut initializer = None;
+        if self.match_token(vec![TokenType::EQUAL]).is_some() {
+            initializer = Some(self.expression()?);
+        }
+        self.consume(
+            TokenType::SEMICOLON,
+            "Expect ';' after variable decleration",
+        )?;
+
+        Ok(Stmt::Var { name, initializer })
     }
 
     fn synchronize(&self) {
@@ -293,6 +326,7 @@ impl Parser {
                 self.consume(TokenType::RightParen, "Expect ')' after expression.");
                 return Ok(Expr::new(ExprKind::Grouping(Box::new(expr))));
             }
+            TokenType::IDENTIFIER => Ok(Expr::new(ExprKind::Variable(self.previous()))),
             _ => Err(Error::ParseErrorToken {
                 message: "Did not find a matching primary token".to_string(),
                 token: self.peek(),
