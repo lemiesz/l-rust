@@ -48,7 +48,7 @@ type StmtResult = Result<Stmt, Error>;
 pub struct Parser {
     pub tokens: Vec<Token>,
     pub position: RefCell<usize>,
-    pub errors: Vec<Error>,
+    pub errors: RefCell<Vec<Error>>,
 }
 
 impl Parser {
@@ -56,11 +56,11 @@ impl Parser {
         Parser {
             tokens: tokens.to_owned(),
             position: RefCell::new(0),
-            errors: vec![],
+            errors: RefCell::new(vec![]),
         }
     }
 
-    pub fn parse(&mut self) -> ParseResult {
+    pub fn parse(&self) -> ParseResult {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             if let Some(stmt) = self.declaration() {
@@ -68,14 +68,14 @@ impl Parser {
             }
         }
 
-        if self.errors.is_empty() {
+        if self.errors.borrow().is_empty() {
             Ok(statements)
         } else {
-            Err(self.errors[0].clone())
+            Err(self.errors.borrow()[0].clone())
         }
     }
 
-    fn declaration(&mut self) -> Option<Stmt> {
+    fn declaration(&self) -> Option<Stmt> {
         let res: StmtResult = if self.match_token(vec![TokenType::VAR]).is_some() {
             self.var_declaration()
         } else {
@@ -85,7 +85,7 @@ impl Parser {
         match res {
             Ok(stmt) => Some(stmt),
             Err(err) => {
-                self.errors.push(err);
+                self.errors.borrow_mut().push(err);
                 self.synchronize();
                 None
             }
@@ -487,6 +487,24 @@ mod tests {
         match stmts.get(1).unwrap() {
             Stmt::Expression(expr) => assert_eq!(expr.to_string(), "(+ (1) (2))"),
             _ => panic!("Expected an expression statement"),
+        }
+    }
+
+    #[test]
+    fn prases_var_statement() {
+        let mut scanner = scanner::Scanner::new("var i = 1;".to_string());
+        scanner.scan_tokens();
+        let parser = Parser::new(&scanner.tokens);
+        let stmts = parser.parse().unwrap();
+        assert_eq!(stmts.len(), 1);
+        match stmts.get(0).unwrap() {
+            Stmt::Var { initializer, name } => {
+                assert_eq!(name.clone().literal.unwrap(), "i".to_string());
+                assert!(initializer.is_some());
+                // TODO: Not sure how to validate the initialize here
+                // assert_eq!(initializer.unwrap().kind, "1".to_string())
+            }
+            _ => panic!("Expected a variable assignment"),
         }
     }
 }
