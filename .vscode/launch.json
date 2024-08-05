@@ -16,6 +16,14 @@
       "program": "${workspaceRoot}/target/debug/intepreter",
       "args": ["test_statements.txt"],
       "cwd": "${workspaceRoot}"
+    },
+    {
+      "name": "TestVariables",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceRoot}/target/debug/intepreter",
+      "args": ["test_variables.txt"],
+      "cwd": "${workspaceRoot}"
     }
   ]
 }

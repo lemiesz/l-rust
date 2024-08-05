@@ -1,8 +1,9 @@
 use crate::{
     expression::{Expr, ExprKind, Stmt},
-    token::{Token, TokenType},
+    token::{self, Token, TokenType},
     value::{self, Value},
 };
+use std::{cell::RefCell, collections::HashMap, rc::Rc, result};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -12,17 +13,48 @@ pub enum Error {
     #[error("Returning {value:?}")]
     Return { value: Value },
 }
+#[derive(Clone, Default, Debug)]
+pub struct Environment {
+    values: HashMap<String, Value>,
+}
+
+impl Environment {
+    pub fn define(&mut self, name: &str, value: Value) {
+        self.values.insert(name.to_string(), value.clone());
+    }
+
+    pub fn get(&self, token: &Token) -> Result<Value, Error> {
+        let lexeme = token.lexeme();
+        if let Some(value) = self.values.get(lexeme) {
+            return Ok(value.clone());
+        } else {
+            Err(Error::Runtime {
+                message: format!("Undefined varliable {lexeme}"),
+                line: token.line,
+            })
+        }
+    }
+}
 
 pub struct Interpreter {
     expressions: Vec<Expr>,
+    enviorment: Rc<RefCell<Environment>>,
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self {
+            enviorment: Rc::new(RefCell::new(Environment::default())),
+            expressions: vec![],
+        }
+    }
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self {
-            expressions: vec![],
-        }
+        Self::default()
     }
+
     pub fn interpret(&self, statments: Vec<Stmt>) {
         for statement in statments {
             if let Err(error) = self.execute(statement) {
@@ -40,6 +72,15 @@ impl Interpreter {
                 let value = self.evaluate(expession)?;
                 println!("{}", value);
             }
+            Stmt::Var { name, initializer } => {
+                let value = if let Some(initializer) = initializer {
+                    self.evaluate(initializer)?
+                } else {
+                    Value::Nil
+                };
+
+                self.enviorment.borrow_mut().define(name.lexeme(), value);
+            }
             Stmt::Block(_) => todo!(),
             Stmt::Class {
                 name,
@@ -53,7 +94,6 @@ impl Interpreter {
                 else_branch,
             } => todo!(),
             Stmt::Return { keyword, value } => todo!(),
-            Stmt::Var { name, initializer } => todo!(),
             Stmt::While { condition, body } => todo!(),
         }
         Ok(())
@@ -177,20 +217,31 @@ impl Interpreter {
                     _ => unreachable!(),
                 }
             }
-            ExprKind::Variable(_) => todo!(),
+            ExprKind::Variable(ref name) => self.lookup_variable(name, &expr),
         }
+    }
+
+    fn lookup_variable(&self, name: &Token, expr: &Expr) -> Result<Value, Error> {
+        self.enviorment.borrow().get(name)
     }
 }
 
 // add tests for this module
 #[cfg(test)]
 mod test {
-    use crate::value::Value;
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::{
+        expression::{Expr, ExprKind},
+        interpreter::{Environment, Interpreter},
+        token::{Token, TokenType},
+        value::Value,
+    };
 
     // Add a test that tests evaluating a literal expression
     #[test]
     fn test_evaluating_literal() {
-        let interpreter = super::Interpreter::new();
+        let interpreter = Interpreter::new();
         let expr = super::Expr::new(super::ExprKind::Literal(Some(super::Value::Number(5.0))));
         let result = interpreter.evaluate(expr).unwrap();
         assert_eq!(result, super::Value::Number(5.0));
@@ -377,5 +428,99 @@ mod test {
         });
         let result = interpreter.evaluate(expr).unwrap();
         assert_eq!(result, super::Value::Boolean(true));
+    }
+
+    #[test]
+    fn test_variable_expression() {
+        // Create an interpreter using the default implementation
+        let interpreter = Interpreter::default();
+
+        // Define a variable "x" with an initial value 10 in the environment
+        let initial_value = Value::Number(10.0);
+        let var_name = Token::new(TokenType::VAR, "x".to_string(), Some("x".to_string()), 0);
+        interpreter
+            .enviorment
+            .borrow_mut()
+            .define("x", initial_value.clone());
+
+        // Create a variable expression that refers to "x"
+        let var_expr = Expr::new(ExprKind::Variable(var_name.clone()));
+
+        // Evaluate the variable expression
+        let result = interpreter.evaluate(var_expr).unwrap();
+
+        // Check that the result is equal to the initial value of "x"
+        assert_eq!(result, initial_value);
+    }
+
+    #[test]
+    fn test_var_initialization_statement() {
+        // Create an interpreter using the default implementation
+        let interpreter = Interpreter::default();
+
+        // Define a token for the variable name
+        let var_name = Token::new(TokenType::VAR, "y".to_string(), Some("y".to_string()), 0);
+
+        // Define the initial value for the variable (e.g., 42)
+        let initial_value = Value::Number(42.0);
+
+        // Create a variable declaration statement
+        let var_stmt = super::Stmt::Var {
+            name: var_name.clone(),
+            initializer: Some(Expr::new(ExprKind::Literal(Some(initial_value.clone())))),
+        };
+
+        // Execute the statement
+        interpreter.execute(var_stmt).unwrap();
+
+        // Check that the variable "y" has been correctly initialized in the environment
+        let result = interpreter.enviorment.borrow().get(&var_name).unwrap();
+        assert_eq!(result, initial_value);
+    }
+}
+
+// Unit tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_define_and_get() {
+        let mut env = Environment::default();
+        let value1 = Value::String("1234".to_string());
+
+        env.define("z", value1.clone());
+        let token = Token::new(TokenType::VAR, "z".to_string(), Some("z".to_string()), 0);
+
+        assert_eq!(env.get(&token).unwrap(), value1);
+    }
+
+    #[test]
+    fn test_get_nonexistent_variable() {
+        let env = Environment::default();
+
+        let token = Token::new(TokenType::VAR, "y".to_string(), Some("y".to_string()), 0);
+
+        let result = env.get(&token);
+
+        assert!(result.is_err());
+        if let Err(Error::Runtime { message, line }) = result {
+            assert_eq!(line, 0);
+        } else {
+            panic!("Expected runtime error for undefined variable.");
+        }
+    }
+
+    #[test]
+    fn test_redefine_variable() {
+        let mut env = Environment::default();
+        let value1 = Value::String("1234".to_string());
+        let value2 = Value::String("1".to_string());
+
+        env.define("z", value1);
+        env.define("z", value2.clone());
+
+        let token = Token::new(TokenType::VAR, "z".to_string(), Some("z".to_string()), 0);
+        assert_eq!(env.get(&token).unwrap(), value2);
     }
 }

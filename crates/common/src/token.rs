@@ -112,7 +112,7 @@ impl Display for TokenType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     lexeme: String,
@@ -137,5 +137,17 @@ impl Token {
 
     pub fn to_lexme(self) -> String {
         return self.lexeme;
+    }
+
+    pub fn typ(&self) -> &TokenType {
+        &self.token_type
+    }
+
+    pub fn lexeme(&self) -> &str {
+        &self.lexeme
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
