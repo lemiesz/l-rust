@@ -3,7 +3,12 @@ use crate::{
     token::{self, Token, TokenType},
     value::{self, Value},
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc, result};
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    rc::Rc,
+    result,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -16,22 +21,45 @@ pub enum Error {
 #[derive(Clone, Default, Debug)]
 pub struct Environment {
     values: HashMap<String, Value>,
+    enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
+    pub fn wrap(enclosing: Rc<RefCell<Environment>>) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self {
+            enclosing: Some(enclosing),
+            values: HashMap::new(),
+        }))
+    }
     pub fn define(&mut self, name: &str, value: Value) {
         self.values.insert(name.to_string(), value.clone());
     }
 
-    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), Error> {
+    fn assign(&mut self, name: &Token, value: Value) -> Result<(), Error> {
         let lexeme = name.lexeme();
-        self.get(name).map(|_| self.define(lexeme, value))
+
+        if self.values.contains_key(lexeme) {
+            self.values.insert(lexeme.to_string(), value.clone());
+
+            return Ok(());
+        }
+
+        if let Some(enclosing) = &self.enclosing {
+            enclosing.borrow_mut().assign(name, value)
+        } else {
+            Err(Error::Runtime {
+                message: format!("Undefined variable '{lexeme}'."),
+                line: name.line(),
+            })
+        }
     }
 
     pub fn get(&self, token: &Token) -> Result<Value, Error> {
         let lexeme = token.lexeme();
         if let Some(value) = self.values.get(lexeme) {
             return Ok(value.clone());
+        } else if let Some(enc) = &self.enclosing {
+            enc.borrow().get(token)
         } else {
             Err(Error::Runtime {
                 message: format!("Undefined varliable {lexeme}"),
@@ -60,7 +88,7 @@ impl Interpreter {
         Self::default()
     }
 
-    pub fn interpret(&self, statments: Vec<Stmt>) {
+    pub fn interpret(&mut self, statments: Vec<Stmt>) {
         for statement in statments {
             if let Err(error) = self.execute(statement) {
                 println!("[Error]: {error}");
@@ -68,7 +96,7 @@ impl Interpreter {
         }
     }
 
-    pub fn execute(&self, stmt: Stmt) -> Result<(), Error> {
+    pub fn execute(&mut self, stmt: Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::Expression(expression) => {
                 self.evaluate(expression)?;
@@ -86,7 +114,9 @@ impl Interpreter {
 
                 self.enviorment.borrow_mut().define(name.lexeme(), value);
             }
-            Stmt::Block(_) => todo!(),
+            Stmt::Block(stmts) => {
+                self.execute_block(stmts, Environment::wrap(self.enviorment.clone()))?
+            }
             Stmt::Class {
                 name,
                 superclass,
@@ -236,6 +266,22 @@ impl Interpreter {
 
     fn lookup_variable(&self, name: &Token, expr: &Expr) -> Result<Value, Error> {
         self.enviorment.borrow().get(name)
+    }
+
+    fn execute_block(
+        &mut self,
+        stmts: Vec<Stmt>,
+        env: Rc<RefCell<Environment>>,
+    ) -> Result<(), Error> {
+        let prev_env = self.enviorment.clone();
+        self.enviorment = env;
+
+        for stmt in stmts {
+            self.execute(stmt);
+        }
+
+        self.enviorment = prev_env;
+        Ok(())
     }
 }
 
@@ -469,7 +515,7 @@ mod test {
     #[test]
     fn test_var_initialization_statement() {
         // Create an interpreter using the default implementation
-        let interpreter = Interpreter::default();
+        let mut interpreter = Interpreter::default();
 
         // Define a token for the variable name
         let var_name = Token::new(TokenType::VAR, "y".to_string(), Some("y".to_string()), 0);

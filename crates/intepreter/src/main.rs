@@ -60,7 +60,7 @@ fn run(file_content: String) {
     scanner.scan_tokens();
     scanner.debug_print();
     let parser = Parser::new(&scanner.tokens);
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
 
     match parser.parse() {
         Ok(stmts) => {

@@ -1,3 +1,28 @@
-let i = 1;
-let j = 2;
-print i + j;
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+
+
+
+print "testing some code from challenges section";
+var a = 1;
+{
+  var a = a + 2;
+  print a;
+}

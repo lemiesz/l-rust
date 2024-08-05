@@ -201,8 +201,22 @@ impl Parser {
     fn statement(&self) -> StmtResult {
         if self.match_token(vec![TokenType::PRINT]).is_some() {
             return self.print_statement();
+        } else if self.match_token(vec![TokenType::LeftBrace]).is_some() {
+            return self.block_statment();
         }
         self.expression_statement()
+    }
+
+    fn block_statment(&self) -> StmtResult {
+        let mut statements = vec![];
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            if let Some(stmt) = self.declaration() {
+                statements.push(stmt);
+            }
+        }
+        self.consume(TokenType::RightBrace, "Expecting '}' after block.");
+        Ok(Stmt::Block(statements))
     }
 
     fn print_statement(&self) -> StmtResult {
