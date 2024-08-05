@@ -23,6 +23,11 @@ impl Environment {
         self.values.insert(name.to_string(), value.clone());
     }
 
+    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), Error> {
+        let lexeme = name.lexeme();
+        self.get(name).map(|_| self.define(lexeme, value))
+    }
+
     pub fn get(&self, token: &Token) -> Result<Value, Error> {
         let lexeme = token.lexeme();
         if let Some(value) = self.values.get(lexeme) {
@@ -102,7 +107,15 @@ impl Interpreter {
     pub fn evaluate(&self, expr: Expr) -> Result<Value, Error> {
         match expr.kind {
             ExprKind::Literal(value) => Ok(value.unwrap()),
-            ExprKind::Assign { name, value } => todo!(),
+            ExprKind::Assign {
+                ref name,
+                ref value,
+            } => {
+                let value = self.evaluate(*value.clone())?;
+
+                let _ = self.enviorment.borrow_mut().assign(name, value.to_owned());
+                Ok(value)
+            }
             ExprKind::Binary {
                 left,
                 operator,

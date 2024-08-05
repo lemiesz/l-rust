@@ -2,7 +2,9 @@
 * Here we implement a parsed based on https://craftinginterpreters.com/parsing-expressions.html
 *
 * The grammar is:
-*  expression     → equality ;
+*  expression     → assignment ;
+   assignment     → IDENTIFIER "=" assignment
+                    | equality ;
    equality       → comparison ( ( "!=" | "==" ) comparison )* ;
    comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
    term           → factor ( ( "-" | "+" ) factor )* ;
@@ -217,7 +219,25 @@ impl Parser {
 
     // express -> equality
     fn expression(&self) -> ExprResult {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&self) -> ExprResult {
+        let expr = self.equality()?;
+
+        if self.match_token(vec![TokenType::EQUAL]).is_some() {
+            let equals = self.previous();
+            let value = Box::new(self.assignment()?);
+
+            if let ExprKind::Variable(name) = expr.kind {
+                return Ok(Expr::new(ExprKind::Assign {
+                    name: name,
+                    value: value,
+                }));
+            }
+            return Err(self.error(equals, "Invalid Assignment Target.".to_owned()));
+        }
+        Ok(expr)
     }
 
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
